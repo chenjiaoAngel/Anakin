@@ -102,17 +102,17 @@ SaberStatus Net::load_model_info(std::istream &stream) {
             tensor->set_shape(vshape);
         }
         _tensors[tensor_name] = tensor;
-//        printf("%s vshape: %d,%d,%d,%d, rshape: %d,%d,%d,%d share:%s\n",
-//               tensor_name.c_str(),
-//               val_sh[0],
-//               val_sh[1],
-//               val_sh[2],
-//               val_sh[3],
-//               real_sh[0],
-//               real_sh[1],
-//               real_sh[2],
-//               real_sh[3],
-//               shared_name.c_str());
+       printf("%s vshape: %d,%d,%d,%d, rshape: %d,%d,%d,%d share:%s\n",
+              tensor_name.c_str(),
+              val_sh[0],
+              val_sh[1],
+              val_sh[2],
+              val_sh[3],
+              real_sh[0],
+              real_sh[1],
+              real_sh[2],
+              real_sh[3],
+              shared_name.c_str());
     }
 
     //! get inputs and outputs name
@@ -130,20 +130,20 @@ SaberStatus Net::load_model_info(std::istream &stream) {
         stream >> out_name;
         _outs.push_back(out_name);
     }
-//    printf("inputs: %d\n", _ins.size());
-//    for (int i = 0; i < _ins.size(); ++i) {
-//        printf("%s\n", _ins[i].c_str());
-//    }
-//    printf("outputs: %d\n", _outs.size());
-//    for (int i = 0; i < _outs.size(); ++i) {
-//        printf("%s\n", _outs[i].c_str());
-//    }
+   printf("inputs: %d\n", _ins.size());
+   for (int i = 0; i < _ins.size(); ++i) {
+       printf("%s\n", _ins[i].c_str());
+   }
+   printf("outputs: %d\n", _outs.size());
+   for (int i = 0; i < _outs.size(); ++i) {
+       printf("%s\n", _outs[i].c_str());
+   }
 
     //! get ops and params
     _ops.clear();
     int ops_num = 0;
     stream >> strtmp >> ops_num;
-    //printf("ops number: %d\n", ops_num);
+    printf("ops number: %d\n", ops_num);
 
     _tensor_ins.resize(ops_num);
     _tensor_outs.resize(ops_num);
@@ -154,7 +154,7 @@ SaberStatus Net::load_model_info(std::istream &stream) {
         int in_num = 0;
         int out_num = 0;
         stream >> op_type >> op_name >> in_num >> out_num;
-        //printf("op type: %s, op_name: %s, ins: %d, outs: %d\n", op_type.c_str(), op_name.c_str(), in_num, out_num);
+        printf("op type: %s, op_name: %s, ins: %d, outs: %d\n", op_type.c_str(), op_name.c_str(), in_num, out_num);
         std::vector<Tensor<CPU, AK_FLOAT>*> tensor_ins;
         for (int j = 0; j < in_num; ++j) {
             std::string in_tensor_name;
@@ -164,7 +164,7 @@ SaberStatus Net::load_model_info(std::istream &stream) {
                 printf("tensor name: %s not exits\n", in_tensor_name.c_str());
                 return SaberInvalidValue;
             }
-            //printf("find ins: %s\n", in_tensor_name.c_str());
+            printf("find ins: %s\n", in_tensor_name.c_str());
             tensor_ins.push_back(it->second);
         }
         _tensor_ins[i] = tensor_ins;
@@ -177,7 +177,7 @@ SaberStatus Net::load_model_info(std::istream &stream) {
                 printf("tensor name: %s not exits\n", out_tensor_name.c_str());
                 return SaberInvalidValue;
             }
-            //printf("find outs: %s\n", out_tensor_name.c_str());
+            printf("find outs: %s\n", out_tensor_name.c_str());
             tensor_outs.push_back(it->second);
         }
         _tensor_outs[i] = tensor_outs;

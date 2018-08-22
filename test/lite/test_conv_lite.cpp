@@ -157,9 +157,15 @@ void test_arm_conv(std::vector<TensorHf4*>& tin, \
     LOG(INFO) << "saber conv impl init";
     CHECK_EQ(conv_lite.init(tin, tvout_saber, ctx1), SaberSuccess) << "Saber conv init failed";
 
+    
+
     //! compute
     LOG(INFO) << "saber conv compute";
     to = 0;
+    
+    for(int i = 0; i < test_iter; ++i){
+        conv_lite.dispatch(tin, tvout_saber);
+    }
 
     for (int i = 0; i < test_iter; ++i) {
         t1.clear();
@@ -191,7 +197,7 @@ void test_arm_conv(std::vector<TensorHf4*>& tin, \
 
 }
 
-#if 1
+#if 0
 TEST(TestSaberLite, test_func_conv3x3s1_arm) {
 
     int num = 1;
@@ -223,7 +229,7 @@ TEST(TestSaberLite, test_func_conv3x3s1_arm) {
     //LOG(WARNING) << "conv3x3s1 not support yet";
 }
 #endif
-#if 1
+#if 0
 TEST(TestSaberLite, test_func_conv3x3s2_arm) {
 
     int num = 1;
@@ -253,7 +259,7 @@ TEST(TestSaberLite, test_func_conv3x3s2_arm) {
     test_arm_conv(tin, chout, kernel, stride, pad, dilation, group, bias_term, threads, cluster);
 }
 #endif
-#if 1
+#if 0
 TEST(TestSaberLite, test_func_conv1x1s1_arm) {
 
     int num = 1;
@@ -283,7 +289,7 @@ TEST(TestSaberLite, test_func_conv1x1s1_arm) {
     test_arm_conv(tin, chout, kernel, stride, pad, dilation, group, bias_term, threads, cluster);
 }
 #endif
-#if 1
+#if 0
 TEST(TestSaberLite, test_func_conv1x1s2_arm) {
 
     int num = 1;
@@ -375,7 +381,7 @@ TEST(TestSaberLite, test_func_depthwise_conv3x3s2_arm) {
 }
 #endif
 
-#if 1
+#if 0
 TEST(TestSaberLite, test_conv_custom_size) {
 
     int chin = ch_in;
