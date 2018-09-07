@@ -54,6 +54,11 @@ class Configuration:
         elif self.framework == "FLUID":
             proto_list = data['TARGET'][self.framework]['ProtoPaths']
             self.framework_config_dict = data['TARGET'][self.framework]
+        elif self.framework == "ONNX":
+            proto_list = data['TARGET'][self.framework]['ProtoPaths']
+            #onnx_file = data['TARGET'][self.framework]['OnnxPaths']
+            self.framework_config_dict = data['TARGET'][self.framework]
+            #print 'self.framework_config_dict', self.framework_config_dict
         else:
             raise NameError('ERROR: Framework not support yet ' % (self.framework))
         try:
@@ -81,6 +86,6 @@ class Configuration:
                 default_save_path: default saved to 'parser/pbs/'
         """
         for pFile in proto_list:
-            subprocess.check_call(['protoc', '-I', 
+            subprocess.check_call(['protoc', '-I',
                                    os.path.dirname(pFile) + "/",
                                    '--python_out', os.path.dirname(default_save_path) + "/", pFile])

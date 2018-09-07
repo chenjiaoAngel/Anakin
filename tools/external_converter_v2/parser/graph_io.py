@@ -334,5 +334,13 @@ class GraphProtoIO(object):
                 del graph_outs[idx]
         self.graph_proto.outs[:] = graph_outs
 
+    def format_edge_from_nodes(self):
+        for node in self.graph_proto.nodes:
+            print(node.name, node.Op.name, node.ins, node.outs)
+            name = node.name
+            for node_name in node.outs:
+                self.add_in_edge(name, node_name)
+                self.add_out_edge(name, node_name)
+
     def __call__(self):
         return self.graph_proto
