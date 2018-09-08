@@ -7,17 +7,25 @@ def shape_2_ak_shape(shape):
     return map(int, [1] * (4 - len(mini_shape)) + list(mini_shape))
 
 def np_2_ak_tensor(np_tensor):
-    data_type_map={
+    data_type_map2 ={
         np.dtype('float32'): 'float',
         np.dtype('int32'): 'int',
         np.dtype('bool'): 'bool'
     }
-
-    type_str = data_type_map.get(np_tensor.dtype)
-    assert type_str != None
+    data_type_map = {
+       'float32': 'float',
+        'int32': 'int',
+        'bool': 'bool'
+    }
+    #print 'np_tensor: ', np_tensor['dtype']
+    #exit()
+    type_str = data_type_map.get(np_tensor['dtype'])
+    #assert type_str != None
     ak_tensor = TensorProtoIO()
-    ak_tensor.set_shape(shape_2_ak_shape(np_tensor.shape))
-    ak_tensor.set_data(np_tensor.data, type_str)
+    ak_tensor.set_shape(shape_2_ak_shape(np_tensor['shape']))
+    #print 'np_tensor: ', np_tensor['shape']
+    #print 'type_str: ', type_str
+    ak_tensor.set_data(np_tensor['data'], type_str)
     #ak_tensor.set_data(np_tensor.flatten(), type_str)
     return ak_tensor
 
@@ -43,10 +51,10 @@ class MedTransAK:
     #     return warpper
 
 
-    def Convolution(self,med_attr,param):
+    def Convolution(self, med_attr, param):
         np_filters = med_attr['weights']
         param.weight_1 = np_2_ak_tensor(np_filters)
-        param.filter_num = np_filters.shape[0] #?
+        param.filter_num = np_filters['shape'][0] #?
         param.kernel_size = med_attr['kernel']
         param.strides = med_attr['strides']
         param.padding = med_attr['padding']
@@ -56,20 +64,20 @@ class MedTransAK:
         if med_attr.get('bias') is not None:
             param.bias_term = True
             bias_tensor = med_attr['bias']
-            bias_tensor = bias_tensor.reshape(1, 1, 1, bias_tensor.shape[0])
+            bias_tensor['shape'] = [1, 1, 1, bias_tensor['shape'][0]]
             param.weight_2 = np_2_ak_tensor(bias_tensor)
         else:
             param.bias_term = False
 
 
     def Dense(self, med_attr, param):
-        param.weight_1 =np_2_ak_tensor(med_attr['weights'])
-        param.axis=1
-        if med_attr.get('bias_weights') is not None:
-            param.bias_term=True
-            param.weight_2=np_2_ak_tensor(med_attr['bias_weights'])
+        param.weight_1 = np_2_ak_tensor(med_attr['weights'])
+        param.axis = 1
+        if med_attr.get('bias') is not None:
+            param.bias_term = True
+            param.weight_2 = np_2_ak_tensor(med_attr['bias'])
         else:
-            param.bias_term=False
+            param.bias_term = False
 
 
     def Relu(self, med_attr, param):
@@ -112,8 +120,11 @@ class MedTransAK:
 
     def Input(self, med_attr, param):
         param.input_shape = shape_2_ak_shape(med_attr['shape'])
-        param.alias = 'input_'+ str(self.input_count)
+        param.alias = 'input_' + str(self.input_count)
         self.input_count += 1
+
+    def Dropout(self, med_attr, param):
+        param.ratio = med_attr['ratio']
 
 
     def map_med_2_ak(self, ak_node, med_node):
@@ -122,12 +133,20 @@ class MedTransAK:
         param = OpsParam()
         ak_op = OpsProtoIO()
         med_attr = med_node['ak_attr']
-        print type_name
+        #print type_name
 
+       # print med_node['name'], med_node['type'], med_node['ak_type']
         func(med_attr, param)
+        '''
+        for name in med_attr:
+            if name != 'weights' or name != 'bias':
+                print name
+        '''
         param.feed_node_attr(ak_node)
         ak_op.set_name(med_node['ak_type'])
+        #print 'type: ', med_node['ak_type']
         ak_node.set_op(ak_op())
+
         [ak_node.add_in(i) for i in med_node['input']]
         [ak_node.add_out(i) for i in med_node['output']]
 

@@ -85,8 +85,6 @@ TARGET:
 
     ONNX:
         # path to proto files
-        ProtoPaths:
-            - /Users/chenjiao04/Documents/cj/onnx/onnx/onnx/onnx.proto
-
-        ModelPath: /Users/chenjiao04/Downloads/vgg16.onnx
-
+        ProtoPaths: /
+        PrototxtPath: /
+        ModelPath: /home/cj/py_onnx_workspace/tools/external_converter_v2/parser/kill_onnx/origin_models/vgg16.onnx

@@ -1,0 +1,188 @@
+import onnx 
+import numpy as np
+#from tensorflow.core.framework import types_pb2, tensor_pb2
+import logging as log
+import collections
+from onnx_trans_utils import *
+
+class ParseOnnxToMed:
+    def __init__(self, onnx_model_path):
+        self.model_path = onnx_model_path
+
+    def _parse_onnx_node(self, onnx_graph, shape_override):
+
+        """
+        Load onnx graph and parse node
+        """
+
+        # ignore the following attributes
+        ignored_attr = ["unknown_rank", "_class", "Tidx", "Tshape", "use_cudnn_on_gpu", "Index",
+                        "Tpaddings", "TI", "Tparams", "Tindices", "Tlen", "Tdim", "dynamic_size", "element_shape",
+                        "Tmultiples", "output_dtype", "Tblock_shape", "Tcrops", "index_type", "Taxis", "U",
+                        "maxval", "Tout"]
+        # some stats
+        op_cnt = collections.Counter()
+        attr_cnt = collections.Counter()
+        anakin_nodes = {}
+        dtypes = {}
+
+        # find ops
+        ops = onnx_graph.node
+
+        # minimal conversion of attributes
+        for node in ops:
+            attr = {}
+            takeit = True
+            op_cnt[node.op_type] += 1
+
+            for a in node.attribute:
+                attr_cnt[a.name] += 1
+                if a.type == 1: ##FLAOT
+                    attr[a.name] = a.f
+                elif a.type == 2: #INT
+                    attr[a.name] = int(a.i)
+                elif a.type == 6: #FLOATS
+                    val_list = [];
+                    for val in a.floats:
+                        val_list.append(val);
+                    attr[a.name] = val_list
+                elif a.type == 7: #INTS
+                    val_list = [];
+                    #print 'type: ', a.name, type(a.ints[0])
+                    for val in a.ints:
+                        val_list.append(int(val));
+                    attr[a.name] = val_list
+                else:
+                    attr[a.name] = a.auto_pad
+
+            if takeit:
+                try:
+                    #input_names = [i for i in node.input]
+                    #output_names = [i for i in node.output]
+                    if node.name == '':
+                       node.name = node.output[0]
+                    #node_name = str(node.op_type)+'_'+str(op_cnt[node.op_type])
+                    #print node_name
+                    #node_name = node.output[0];
+                    anakin_nodes[node.name] = {'name': node.name, 'type': node.op_type, 'input': node.input,
+                                               'output': node.output, 'onnx_attr': attr, 'visted': False, 'name:': False,
+                                               'shape': None, 'ak_type': None, 'ak_attr': {}}
+                except Exception as ex:
+                    log.error("pass1 convert failed for %s, ex=%s", node, ex)
+                    raise
+        #print 'anakin_node', anakin_nodes
+        #change inputs outputs name
+        for node_name in anakin_nodes.keys():
+            for in_name in anakin_nodes[node_name]['input']:
+                for node_name1 in anakin_nodes.keys():
+                    if in_name == node_name1:
+                        out_name = anakin_nodes[node_name1]['output']
+                        #print 'in_name', node_name1, out_name
+                        for i in range(len(out_name)):
+                            if out_name[i] == in_name:
+                                out_name[i] = node_name
+                                break;
+                        #print 'node', node_name, out_name
+                        #exit()
+
+        print 'anakin_node', anakin_nodes
+       # exit()
+        #weights and bias
+        graph = onnx_graph.initializer
+        weights = {}
+        for init_ptr in graph:
+           # print 'init_ptr: ', init_ptr.name
+            [data, shape, dtype] = onnx_to_anakin_tensor(init_ptr)
+            anakin_tensor = {}
+            anakin_tensor['shape'] = shape
+            anakin_tensor['data'] = data
+            anakin_tensor['dtype'] = dtype
+            #attr[init_ptr.name] = anakin_tensor
+            #anakin_nodes[init_ptr.name] = {'name': init_ptr.name, 'onnx_attr': attr, 'visted': False,
+             #                               'shape':None, 'ak_type': None, 'ak_attr': {}}
+            weights[init_ptr.name] = anakin_tensor
+           # print 'name: ', init_ptr.name, dtype, shape,
+
+            #print 'tensor: ',  anakin_tensor
+            #exit()
+
+        input_name = onnx_graph.input
+        inputs = {}
+        input_shape = {}
+        for input_a in input_name:
+            shape = []
+            for dim in input_a.type.tensor_type.shape.dim:
+                shape.append(dim.dim_value)
+            #attr["shape"] = shape
+            if input_a.name.startswith('data'):
+                inputs[input_a.name] = shape
+                output_node = []
+                #print 'input: ', input_a.name
+                for node_name in anakin_nodes.keys():
+                    for name in anakin_nodes[node_name]['input']:
+                        if name == input_a.name:
+                            output_node.append(node_name)
+                #print 'out: ', output_node
+                anakin_nodes[input_a.name] = {'name': input_a.name, 'type': 'Input', 'input': [],
+                                               'output': output_node, 'onnx_attr': {}, 'visted': True,
+                                               'shape': shape, 'ak_type': 'Input', 'ak_attr': {'shape': shape}}
+            else:
+                #print 'name: ', input_a.name
+                input_shape[input_a.name] = shape
+
+        output_name = onnx_graph.output
+        outputs = {}
+        for output_a in output_name:
+            shape = []
+            for dim in output_a.type.tensor_type.shape.dim:
+                shape.append(dim.dim_value)
+            outputs[output_a.name] = shape
+            '''
+            input_node = []
+            for node in anakin_nodes.values():
+                for name in node['output']:
+                    if name == output_a.name:
+                        input_node.append(node['name'])
+
+            anakin_nodes[output_a.name] = {'name': output_a.name, 'type': 'Output', 'input': input_node,
+                                          'output': [], 'onnx_attr': {}, 'visted': True,
+                                          'shape': shape, 'ak_type': 'Output', 'ak_attr': {}}
+            '''
+        #print 'weights', len(weights)
+        #print 'weights', weights
+        print 'inputs', inputs
+        print 'outputs', outputs
+        return anakin_nodes, weights, inputs, outputs, input_shape
+
+    def _parse_onnx_graph(self, nodes, weights):
+        # out2nodename = {i['name']:[] for i in nodes}
+        #self._fix_self_output(nodes)
+
+        def all_search(graph, table):
+            for onnx_node in graph.values():
+                if onnx_node['visted']:
+                    continue
+                type_name = onnx_node['type']
+                if table.get(type_name) != None:
+                    table[type_name](onnx_node, weights)
+
+        all_search(nodes, {'Conv': parse_Conv,
+                           'Gemm': parse_Gemm})
+
+        all_search(nodes, {'Concat': parse_Concat})
+
+        all_search(nodes, {'Dropout': parse_Dropout,
+                           'Relu': parse_Act,
+                           'MaxPool': parse_Pooling})
+        return nodes
+
+    def parse(self):
+        onnx_model = onnx.load(self.model_path)
+        onnx_graph = onnx_model.graph
+        [nodes, weights, inputs, outputs, input_shape] = self._parse_onnx_node(onnx_graph, {})
+        # for node in nodes.values():
+        #     print(node['name'],node['input'],node['output'])
+        # exit()
+        med_graph = self._parse_onnx_graph(nodes, weights)
+       # filter_graph={i:med_graph[i] for i in med_graph.keys() if med_graph[i]['ak_type'] is not None}
+        return med_graph, outputs #filter_graph
