@@ -34,7 +34,7 @@ class Graph(object):
             from kill_fluid import FluidParser
             self.parser = FluidParser(config.framework_config_dict)
         elif config.framework == 'ONNX':
-            from kill_onnx import OnnxParser
+            from onnx import OnnxParser
             self.parser = OnnxParser(config.framework_config_dict)
         else:
             raise NameError('ERROR: GrapProtoIO not support %s model.' % (config.framework))

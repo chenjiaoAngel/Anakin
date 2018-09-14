@@ -109,6 +109,7 @@ class ParseOnnxToMed:
         input_name = onnx_graph.input
         inputs = {}
         input_shape = {}
+        in_cnt = 0
         for input_a in input_name:
             shape = []
             for dim in input_a.type.tensor_type.shape.dim:
@@ -123,9 +124,19 @@ class ParseOnnxToMed:
                         if name == input_a.name:
                             output_node.append(node_name)
                 #print 'out: ', output_node
-                anakin_nodes[input_a.name] = {'name': input_a.name, 'type': 'Input', 'input': [],
+                node_name = str('input') + '_' + str(in_cnt)
+                # change inputs name in anakin nodes
+                for an_node in anakin_nodes.keys():
+                    in_name = anakin_nodes[an_node]['input']
+                    for i in range(len(in_name)):
+                        if in_name[i] == input_a.name:
+                            in_name[i] = node_name
+
+                anakin_nodes[node_name] = {'name': node_name, 'type': 'Input', 'input': [],
                                                'output': output_node, 'onnx_attr': {}, 'visted': True,
                                                'shape': shape, 'ak_type': 'Input', 'ak_attr': {'shape': shape}}
+
+                in_cnt += 1
             else:
                 #print 'name: ', input_a.name
                 input_shape[input_a.name] = shape
@@ -150,6 +161,11 @@ class ParseOnnxToMed:
             '''
         #print 'weights', len(weights)
         #print 'weights', weights
+        for node_name in anakin_nodes.keys():
+            for node_out in outputs.keys():
+                if node_name == node_out:
+                    anakin_nodes[node_name]['output'] = []
+
         print 'inputs', inputs
         print 'outputs', outputs
         return anakin_nodes, weights, inputs, outputs, input_shape
@@ -174,6 +190,8 @@ class ParseOnnxToMed:
         all_search(nodes, {'Dropout': parse_Dropout,
                            'Relu': parse_Act,
                            'MaxPool': parse_Pooling})
+        #nodes = rm_weight_node(nodes, weights)
+        #print 'anakin_node: ', nodes
         return nodes
 
     def parse(self):

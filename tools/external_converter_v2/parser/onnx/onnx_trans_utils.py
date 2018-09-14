@@ -81,7 +81,7 @@ def get_onnx_tensor_data(tensor):
     return [is_raw, data, dtype]
 
 
-def map_tf_dtype(dtype):
+def map_onnx_dtype(dtype):
     return ONNX_TO_ANAKIN_DTYPE.get(dtype)
 
 def onnx_to_anakin_tensor(tensor):
@@ -98,8 +98,8 @@ def onnx_to_anakin_tensor(tensor):
         if len(shape) > 0:
             #print 'type: ', tensor.data_type
             #print 'data: ', len(data)
-            #print 'dtype: ', map_tf_dtype(tensor.data_type)
-            anakin_tensor = np.frombuffer(data, map_tf_dtype(tensor.data_type))
+            #print 'dtype: ', map_onnx_dtype(tensor.data_type)
+            anakin_tensor = np.frombuffer(data, map_onnx_dtype(tensor.data_type))
             #print 'anakin: ', anakin_tensor
             anakin_tensor = anakin_tensor.reshape(shape)
         else:
@@ -117,6 +117,12 @@ def has_key(attr, key_name):
 
     return False
 
+def rm_weight_node(onnx_node, weights):
+    for node in onnx_node.keys():
+        in_node = onnx_node[node]['input']
+        for name in in_node:
+            if weights.has_key(name):
+                in_node.remove(name)
 
 def parse_Conv(onnx_node, weights):
    #print 'parse_Conv2D'
@@ -133,19 +139,22 @@ def parse_Conv(onnx_node, weights):
 
     #print 'weights: ', weights_data
     #exit()
-
-    bias_name = onnx_node['input'][2]
-    bias_node = weights[bias_name]
-    if weights.has_key(bias_name):
+    bias_node = None
+    if len(onnx_node['input']) > 2:
+        bias_name = onnx_node['input'][2]
         bias_node = weights[bias_name]
-    else:
-        print 'can not find bias', bias_name
-    '''
-    print 'bias dtype', bias_node['dtype']
-    print 'bias shape ', bias_node['shape']
-    print 'bias data', bias_node['data']
-    exit()
-    '''
+        if weights.has_key(bias_name):
+            bias_node = weights[bias_name]
+        else:
+            print 'can not find bias', bias_name
+        '''
+        print 'bias dtype', bias_node['dtype']
+        print 'bias shape ', bias_node['shape']
+        print 'bias data', bias_node['data']
+        exit()
+        '''
+        onnx_node['input'].remove(bias_name)
+
     onnx_attr = onnx_node['onnx_attr']
     group = 1
     if 'group' in onnx_attr.keys():
@@ -177,15 +186,25 @@ def parse_Conv(onnx_node, weights):
     #else:
     padding = [padding_val[1], padding_val[0]]
 
-
     ak_attr = onnx_node['ak_attr']
     ak_attr['weights'] = weights_data
     ak_attr['padding'] = padding
     ak_attr['dilations'] = dilations
     ak_attr['strides'] = strides
     ak_attr['kernel'] = kernel_shape
-    ak_attr['bias'] = bias_node
     ak_attr['group'] = group
+    if bias_node is not None:
+        ak_attr['bias'] = bias_node
+
+    inputs = onnx_node['input']
+    inputs.remove(wei_name)
+    '''
+    for name in inputs:
+        if name == wei_name:
+            inputs.remove(name)
+        if name == bias_name:
+            inputs.remove(bias_name)
+    '''
     #print 'name: ', onnx_node['name']
     #print 'ak_attr: ', ak_attr
     #exit()
@@ -230,18 +249,27 @@ def parse_Gemm(onnx_node, weights):
     if alpha == 0 or transA == 1:
         print 'Gemm Error, alpha, transA', alpha, transA
     if beta == 1:
-        bias_name = onnx_node['input'][2]
-        bias_node = weights[bias_name]
-        if weights.has_key(bias_name):
+        if len(onnx_node['input']) > 2:
+            bias_name = onnx_node['input'][2]
             bias_node = weights[bias_name]
-        else:
-            print 'can not find bias', bias_name
-        ak_attr['bias'] = bias_node
-
+            if weights.has_key(bias_name):
+                bias_node = weights[bias_name]
+            else:
+                print 'can not find bias', bias_name
+            ak_attr['bias'] = bias_node
+            onnx_node['input'].remove(bias_name)
+    print 'name: ', onnx_node['name']
+    print 'shape', weights_data['shape']
     if transB == 1:
+        #print 'trans'
+        ak_attr['trans'] = 1
         weights_data['data'] = np.transpose(weights_node['data'])
+        weights_data['shape'] = [weights_data['shape'][1],  weights_data['shape'][0]]
 
     ak_attr['weights'] = weights_data
+    #ak_attr['out_dim'] = weights_data
+
+    onnx_node['input'].remove(wei_name)
 
 def parse_Act(onnx_node, weights):
     onnx_node['visted'] = True
@@ -361,6 +389,15 @@ def parse_Pooling(onnx_node, weights):
 
 def parse_Dropout(onnx_node, weights):
     onnx_node['visted'] = True
-    onnx_node['ak_type'] = 'Dropout'
+    onnx_node['ak_type'] = 'Scale'
     ak_attr = onnx_node['ak_attr'];
-    ak_attr['ratio'] = onnx_node['onnx_attr']['ratio']
+    scale_val = onnx_node['onnx_attr']['ratio']
+    shape = [1, 1, 1, 1]
+    scale_np = np.full(shape, scale_val); #np.arange([scale_val])
+    weight_tensor = {}
+    weight_tensor['shape'] = shape
+    weight_tensor['data'] = scale_np
+    weight_tensor['dtype'] = 'float32'
+    ak_attr['weights'] = weight_tensor
+    ak_attr['axis'] = 0
+    ak_attr['num_axes'] = 0

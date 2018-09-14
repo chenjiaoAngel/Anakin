@@ -78,6 +78,14 @@ class MedTransAK:
             param.weight_2 = np_2_ak_tensor(med_attr['bias'])
         else:
             param.bias_term = False
+        #print 'shape: ', med_attr['weights']['shape']
+        if med_attr.get('trans') is not None:
+            param.out_dim = med_attr['weights']['shape'][1]
+            print'trans out_dim', param.out_dim
+        else:
+            param.out_dim = med_attr['weights']['shape'][0]
+            print'out_dim', param.out_dim
+
 
 
     def Relu(self, med_attr, param):
@@ -125,6 +133,19 @@ class MedTransAK:
 
     def Dropout(self, med_attr, param):
         param.ratio = med_attr['ratio']
+
+    def Scale(self, med_attr, param):
+        param.weight_1 = np_2_ak_tensor(med_attr['weights'])
+        if med_attr.get('bias') is not None:
+            param.weight_2 = np_2_ak_tensor(med_attr['bias'])
+            param.bias_term = True
+            param.axis = 1
+            param.num_axes = 1
+        else:
+            param.bias_term = False
+            param.axis = 0
+            param.num_axes = 0
+
 
 
     def map_med_2_ak(self, ak_node, med_node):

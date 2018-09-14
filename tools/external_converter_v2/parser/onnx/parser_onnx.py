@@ -76,12 +76,12 @@ class OnnxParser:
 			#print 'node: ', node
 			self._add_protonode(anakin_graph, node)
 
-		print 'anakin'
+		#print 'anakin'
 
 		anakin_graph.format_edge_from_nodes()
 		for out_node_name in self.Output:
 			anakin_graph.add_out('output_' + out_node_name, out_node_name)
-			#print 'out', out_node_name
+			print 'out', out_node_name
 		return anakin_graph
 
 
