@@ -85,7 +85,7 @@ class ParseOnnxToMed:
                         #print 'node', node_name, out_name
                         #exit()
 
-        print 'anakin_node', anakin_nodes
+        #print 'anakin_node', anakin_nodes
        # exit()
         #weights and bias
         graph = onnx_graph.initializer
@@ -166,8 +166,8 @@ class ParseOnnxToMed:
                 if node_name == node_out:
                     anakin_nodes[node_name]['output'] = []
 
-        print 'inputs', inputs
-        print 'outputs', outputs
+        #print 'inputs', inputs
+        #print 'outputs', outputs
         return anakin_nodes, weights, inputs, outputs, input_shape
 
     def _parse_onnx_graph(self, nodes, weights):

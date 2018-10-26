@@ -320,6 +320,7 @@ def parse_Pooling(onnx_node, weights):
         # padding deal
         #if onnx_attr['auto_pad'] == 'SAME_LOWER' or onnx_attr['auto_pad'] == 'SAME_UPPER':
         #    padding = [0, 0]
+        # padding = [1, 1, 1, 1] =[left, right, top, bottom]
         #else:
         padding = [padding_val[1], padding_val[0]]
 
@@ -391,6 +392,17 @@ def parse_Dropout(onnx_node, weights):
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Scale'
     ak_attr = onnx_node['ak_attr'];
+    '''
+    ratio	(float, default 0.5) the ratio of random dropout
+    is_test	(int) if nonzero, run dropout in test mode where the output is simply Y = X.
+    '''
+    if 'is_test' in onnx_node['onnx_attr'].keys():
+        if onnx_node['onnx_attr']['is_test']  == 0:
+            ak_attr['drop'] = 1
+        else:
+            ak_attr['drop'] = 0
+    else:
+        ak_attr['drop'] = 0
     scale_val = onnx_node['onnx_attr']['ratio']
     shape = [1, 1, 1, 1]
     scale_np = np.full(shape, scale_val); #np.arange([scale_val])

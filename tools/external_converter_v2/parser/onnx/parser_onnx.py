@@ -6,6 +6,7 @@ from ..proto import *
 import onnx
 from onnx_graph import ParseOnnxToMed
 from med_trans_util import MedTransAK
+from med_graph import MedGraphUtil, MedNodeUtil
 
 class OnnxParser:
 	def __init__(self, onnx_config_dict):
@@ -21,6 +22,7 @@ class OnnxParser:
 	def __call__(self):
 		[med_graph, outputs] = self._conver_onnx_2_med()
 		self.Output = outputs
+		MedGraphUtil.solve(med_graph)
 		anakin_graph = self._conver_med_2_anakin(med_graph)
 		return anakin_graph
 
