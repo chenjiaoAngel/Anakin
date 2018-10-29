@@ -182,10 +182,29 @@ class MedGraphUtil:
             #replace node
             for node in input:
                 if node in med_graph.keys():
-                    med_graph[node]['output'] = [i if i != med_node['name'] else output[0] for i in med_graph[node]['output'] ]
+                    out_node = med_graph[node]['output']
+                    #print 'type:', type(out_node)
+                    for i in range(len(out_node)):
+                        if out_node[i] == med_node['name']:
+                            out_node.pop(i)
+                            out_node += output
+                            #out_node = out_node[1:i] + output + out_node[i+1:]
+                            #print 'type', type(out_node)
+                            break
+
+                #if node in med_graph.keys():
+                #    med_graph[node]['output'] = [i if i != med_node['name'] else output[0] for i in med_graph[node]['output'] ]
             for node in output:
                 if node in med_graph.keys():
-                    med_graph[node]['input'] = [i if i != med_node['name'] else input[0] for i in med_graph[node]['input']]
+                    in_node = med_graph[node]['input']
+                    for i in range(len(in_node)):
+                        if in_node[i] == med_node['name']:
+                            in_node.pop(i)
+                            in_node += input
+                            #in_node = in_node[1:i] + input + in_node[i + 1:]
+                            break
+                #if node in med_graph.keys():
+                #    med_graph[node]['input'] = [i if i != med_node['name'] else input[0] for i in med_graph[node]['input']]
             med_graph.pop(med_node['name'])
             #del med_graph[med_node]
         pass

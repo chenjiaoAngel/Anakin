@@ -168,6 +168,8 @@ class MedTransAK:
         #print 'type: ', med_node['ak_type']
         ak_node.set_op(ak_op())
 
+        #print 'type', type(med_node['input'])
+        #print 'type', type(med_node['output'])
         [ak_node.add_in(i) for i in med_node['input']]
         [ak_node.add_out(i) for i in med_node['output']]
 

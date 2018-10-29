@@ -64,8 +64,8 @@ class ParseOnnxToMed:
                     #node_name = str(node.op_type)+'_'+str(op_cnt[node.op_type])
                     #print node_name
                     #node_name = node.output[0];
-                    anakin_nodes[node.name] = {'name': node.name, 'type': node.op_type, 'input': node.input,
-                                               'output': node.output, 'onnx_attr': attr, 'visted': False, 'name:': False,
+                    anakin_nodes[node.name] = {'name': node.name, 'type': node.op_type, 'input': [str(i) for i in node.input],
+                                               'output': [str(i) for i in node.output], 'onnx_attr': attr, 'visted': False, 'name:': False,
                                                'shape': None, 'ak_type': None, 'ak_attr': {}}
                 except Exception as ex:
                     log.error("pass1 convert failed for %s, ex=%s", node, ex)

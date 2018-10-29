@@ -258,8 +258,8 @@ def parse_Gemm(onnx_node, weights):
                 print 'can not find bias', bias_name
             ak_attr['bias'] = bias_node
             onnx_node['input'].remove(bias_name)
-    print 'name: ', onnx_node['name']
-    print 'shape', weights_data['shape']
+    #print 'name: ', onnx_node['name']
+    #print 'shape', weights_data['shape']
     if transB == 1:
         #print 'trans'
         ak_attr['trans'] = 1
