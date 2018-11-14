@@ -2,6 +2,7 @@ import onnx
 import numpy as np
 #from tensorflow.core.framework import types_pb2, tensor_pb2
 from google.protobuf import text_format
+from med_graph import MedNodeUtil, MedGraphUtil
 
 ONNX_TO_ANAKIN_DTYPE = {
     onnx.AttributeProto.FLOAT: np.float32,
@@ -219,6 +220,7 @@ def parse_Gemm(onnx_node, weights):
         weights_node = weights[wei_name]
     else:
         print 'can not find weights', wei_name
+        return
     #assert weights_node['type'] == 'Const'
     weights_data = weights_node
 
@@ -398,9 +400,12 @@ def parse_Dropout(onnx_node, weights):
     '''
     if 'is_test' in onnx_node['onnx_attr'].keys():
         if onnx_node['onnx_attr']['is_test']  == 0:
-            ak_attr['drop'] = 1
+            ak_attr['drop'] = 1 #Ydata[i] = Xdata[i] * scale * mask_data[i];
         else:
             ak_attr['drop'] = 0
+            onnx_node['output'].pop(len(onnx_node['output'])-1) #delete mask_node
+            print 'it not support, Error'
+            return
     else:
         ak_attr['drop'] = 0
     scale_val = onnx_node['onnx_attr']['ratio']
@@ -413,3 +418,56 @@ def parse_Dropout(onnx_node, weights):
     ak_attr['weights'] = weight_tensor
     ak_attr['axis'] = 0
     ak_attr['num_axes'] = 0
+
+def parse_BatchNorm(onnx_node, weights):
+    onnx_node['visted'] = True
+    onnx_node['ak_type'] = 'Scale'
+    ak_attr = onnx_node['ak_attr']
+    assert len(onnx_node['input']) == 5
+
+    alpha_name = onnx_node['input'][1]
+    beta_name = onnx_node['input'][2]
+    mean_name = onnx_node['input'][3]
+    var_name = onnx_node['input'][4]
+
+    alpha_node = weights[alpha_name]
+    if weights.has_key(alpha_name):
+        alpha_node = weights[alpha_name]
+    else:
+        print 'can not find weights', alpha_name
+        return
+
+    beta_node = weights[beta_name]
+    if weights.has_key(beta_name):
+        beta_node = weights[beta_name]
+    else:
+        print 'can not find weights', beta_name
+        return
+
+    mean_node = weights[mean_name]
+    if weights.has_key(mean_name):
+        mean_node = weights[mean_name]
+    else:
+        print 'can not find weights', mean_name
+        return
+
+    var_node = weights[var_name]
+    if weights.has_key(var_name):
+        var_node = weights[var_name]
+    else:
+        print 'can not find weights', var_name
+        return
+
+    onnx_attr = onnx_node['onnx_attr']
+    eps = onnx_attr['epsilon']
+    momentum = onnx_attr['momentum']
+    spatial = onnx_attr['spatial']
+
+    var = np.sqrt(var_node['data'].flatten() + eps)
+    np_scale = alpha_node['data'].flatten() / var
+    np_bias = beta_node['data'].flatten() - (alpha_node['data'].flatten() * mean_node['data'].flatten() / var)
+
+    ak_attr['scale_weights'] = np_scale.astype('float32')
+    ak_attr['bias_weights'] = np_bias.astype('float32')
+
+    MedNodeUtil.retain_input(onnx_node, [onnx_node['input'][0]])

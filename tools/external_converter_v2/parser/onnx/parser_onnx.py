@@ -33,7 +33,9 @@ class OnnxParser:
 
 	def _add_protonode(self, ak_graph, med_node):
 		ak_type = med_node['ak_type']
+		# print '_add_protonode', med_node['name'], ak_type
 		if ak_type is None:
+			# print 'ak_type'
 			return
 		nodeIO = NodeProtoIO()
 		if med_node['ak_type'] == 'Input':
@@ -58,7 +60,7 @@ class OnnxParser:
 			node['out_search_flat']=True
 			outputs=node['output']
 			result = set()
-			if len(outputs)==0:
+			if len(outputs) == 0:
 				result.add(node['name'])
 			else:
 				for i in outputs:
@@ -78,7 +80,7 @@ class OnnxParser:
 			#print 'node: ', node
 			self._add_protonode(anakin_graph, node)
 
-		#print 'anakin'
+		print 'anakin'
 
 		anakin_graph.format_edge_from_nodes()
 		for out_node_name in self.Output:

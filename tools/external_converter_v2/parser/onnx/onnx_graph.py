@@ -59,9 +59,9 @@ class ParseOnnxToMed:
                 try:
                     #input_names = [i for i in node.input]
                     #output_names = [i for i in node.output]
-                    if node.name == '':
-                       node.name = node.output[0]
-                    #node_name = str(node.op_type)+'_'+str(op_cnt[node.op_type])
+                    #if node.name == '':
+                       #node.name = node.output[0]
+                    node.name = str(node.op_type)+'_'+str(op_cnt[node.op_type])
                     #print node_name
                     #node_name = node.output[0];
                     anakin_nodes[node.name] = {'name': node.name, 'type': node.op_type, 'input': [str(i) for i in node.input],
@@ -70,21 +70,6 @@ class ParseOnnxToMed:
                 except Exception as ex:
                     log.error("pass1 convert failed for %s, ex=%s", node, ex)
                     raise
-        #print 'anakin_node', anakin_nodes
-        #change inputs outputs name
-        for node_name in anakin_nodes.keys():
-            for in_name in anakin_nodes[node_name]['input']:
-                for node_name1 in anakin_nodes.keys():
-                    if in_name == node_name1:
-                        out_name = anakin_nodes[node_name1]['output']
-                        #print 'in_name', node_name1, out_name
-                        for i in range(len(out_name)):
-                            if out_name[i] == in_name:
-                                out_name[i] = node_name
-                                break;
-                        #print 'node', node_name, out_name
-                        #exit()
-
         #print 'anakin_node', anakin_nodes
        # exit()
         #weights and bias
@@ -119,18 +104,20 @@ class ParseOnnxToMed:
                 inputs[input_a.name] = shape
                 output_node = []
                 #print 'input: ', input_a.name
-                for node_name in anakin_nodes.keys():
-                    for name in anakin_nodes[node_name]['input']:
+                for node in anakin_nodes.values():
+                    for name in node['input']:
                         if name == input_a.name:
-                            output_node.append(node_name)
+                            output_node.append(name) #(node_name)
                 #print 'out: ', output_node
                 node_name = str('input') + '_' + str(in_cnt)
                 # change inputs name in anakin nodes
-                for an_node in anakin_nodes.keys():
-                    in_name = anakin_nodes[an_node]['input']
+                '''
+                for node in anakin_nodes.values():
+                    in_name = node['input']
                     for i in range(len(in_name)):
                         if in_name[i] == input_a.name:
                             in_name[i] = node_name
+                '''
 
                 anakin_nodes[node_name] = {'name': node_name, 'type': 'Input', 'input': [],
                                                'output': output_node, 'onnx_attr': {}, 'visted': True,
@@ -148,27 +135,91 @@ class ParseOnnxToMed:
             for dim in output_a.type.tensor_type.shape.dim:
                 shape.append(dim.dim_value)
             outputs[output_a.name] = shape
-            '''
             input_node = []
             for node in anakin_nodes.values():
                 for name in node['output']:
                     if name == output_a.name:
-                        input_node.append(node['name'])
+                        input_node.append(name)
 
             anakin_nodes[output_a.name] = {'name': output_a.name, 'type': 'Output', 'input': input_node,
                                           'output': [], 'onnx_attr': {}, 'visted': True,
-                                          'shape': shape, 'ak_type': 'Output', 'ak_attr': {}}
-            '''
+                                          'shape': shape, 'ak_type': None, 'ak_attr': {}}
         #print 'weights', len(weights)
         #print 'weights', weights
+        '''
         for node_name in anakin_nodes.keys():
-            for node_out in outputs.keys():
+            for node_out in output_name:
                 if node_name == node_out:
                     anakin_nodes[node_name]['output'] = []
+        '''
+        # change inputs outputs name
+        self._change_inout_nodename(anakin_nodes, weights)
+        # print 'anakin_node', anakin_nodes
+
+        output_node = {}
+        for node in anakin_nodes.values():
+            for out_name in node['output']:
+                if out_name in outputs:
+                    output_node[node['name']] = outputs[out_name]
+                    # delete output
+                    node['output'].pop()
+            outnode = node['output']
+            for i in range(len(outnode)):
+                if outnode[i] in outputs:
+                    outnode.pop(i)
+
 
         #print 'inputs', inputs
         #print 'outputs', outputs
-        return anakin_nodes, weights, inputs, outputs, input_shape
+        return anakin_nodes, weights, inputs, outputs, output_node, input_shape
+
+    def _change_inout_nodename(self, nodes, weights):
+        '''
+        convert tensor connection to op connection
+        :param nodes:
+        :return:
+        '''
+        out2nodename = {}
+        for node in nodes.values():
+            for out_name in node['output']:
+                if out2nodename.get(out_name) is None:
+                    out2nodename[out_name] = [node['name']]
+                else:
+                    out2nodename[out_name].append(node['name'])
+        in2nodename = {}
+        for node in nodes.values():
+            for in_name in node['input']:
+                if in2nodename.get(in_name) is None:
+                    in2nodename[in_name] = [node['name']]
+                else:
+                    in2nodename[in_name].append(node['name'])
+
+        # print 'in2node_name', in2nodename
+        # print 'out2node_name', out2nodename
+        # print 'shape', shape
+
+        for node in nodes.values():
+            # print 'in:', node['input']
+            # print 'out:', node['output']
+            new_output = []
+            new_input = []
+
+            for out_name in node['output']:
+                if in2nodename.get(out_name) is not None:
+                    new_output += [op_name for op_name in in2nodename[out_name]]
+            for in_name in node['input']:
+                if out2nodename.get(in_name) is not None:
+                    new_input += [op_name for op_name in out2nodename[in_name]]
+                # bias and weights
+                if weights.has_key(in_name):
+                    new_input += [in_name]
+
+
+            node['input'] = new_input
+            node['output'] = new_output
+            # print 'node:', node['name']
+            # print 'in:', node['input']
+            # print 'out:', node['output']
 
     def _parse_onnx_graph(self, nodes, weights):
         # out2nodename = {i['name']:[] for i in nodes}
@@ -183,7 +234,8 @@ class ParseOnnxToMed:
                     table[type_name](onnx_node, weights)
 
         all_search(nodes, {'Conv': parse_Conv,
-                           'Gemm': parse_Gemm})
+                           'Gemm': parse_Gemm,
+                           'BatchNormalization':parse_BatchNorm})
 
         all_search(nodes, {'Concat': parse_Concat})
 
@@ -197,10 +249,10 @@ class ParseOnnxToMed:
     def parse(self):
         onnx_model = onnx.load(self.model_path)
         onnx_graph = onnx_model.graph
-        [nodes, weights, inputs, outputs, input_shape] = self._parse_onnx_node(onnx_graph, {})
+        [nodes, weights, inputs, outputs, output_node, input_shape] = self._parse_onnx_node(onnx_graph, {})
         # for node in nodes.values():
         #     print(node['name'],node['input'],node['output'])
         # exit()
         med_graph = self._parse_onnx_graph(nodes, weights)
        # filter_graph={i:med_graph[i] for i in med_graph.keys() if med_graph[i]['ak_type'] is not None}
-        return med_graph, outputs #filter_graph
+        return med_graph, output_node #filter_graph, outputs

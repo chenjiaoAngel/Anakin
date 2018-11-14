@@ -22,7 +22,7 @@ class MedNodeUtil:
         '''
         new_list = []
         for index, ori_object in enumerate(origin_list):
-            if ori_object['name'] == name:
+            if ori_object == name:
                 new_list = new_list + replace_list + origin_list[index + 1:]
                 break
             else:
@@ -77,14 +77,14 @@ class MedGraphUtil:
         :return:
         '''
         output = father_node['output']
-        son_shape = father_node['output'][0]['shape']
-        son_node['input'] = [{'name': father_node['name'], 'shape': son_shape}]
+        #son_shape = output[0]['shape']
+        son_node['input'] = [{'name': father_node['name']}]
         son_node['output'] = output
-        father_node['output'] = [{'name': son_node['name'], 'shape': son_shape}]
+        father_node['output'] = [{'name': son_node['name']}]
         for i in output:
-            out_node = graph[i['name']]
+            out_node = graph[i]
             out_node['input'] = MedNodeUtil.replace_name_with_list(out_node['input'], father_node['name'],
-                                                                   [{'name': son_node['name'], 'shape': son_shape}])
+                                                                   [{'name': son_node['name']}])
         graph[son_node['name']] = son_node
 
     @staticmethod
@@ -109,11 +109,13 @@ class MedGraphUtil:
         :return:
         '''
         output = med_node['output']
+        #print 'output!!:', output
         if len(output) > 1:
             split_node = MedNodeUtil.new_med_node()
             split_node['name'] = med_node['name'] + '_split#'
             split_node['ak_type'] = 'Split'
             split_node['ak_attr']['split_num'] = len(output)
+            print 'split', split_node['name']
             MedGraphUtil.append_node(med_node, split_node, graph=med_graph)
         pass
 
@@ -179,32 +181,39 @@ class MedGraphUtil:
             #not do scale, delete node
             input = med_node['input']
             output = med_node['output']
+            print 'name: ', med_node['name']
+            print 'inputs: ', input
+            print 'outputs: ', output
             #replace node
             for node in input:
-                if node in med_graph.keys():
-                    out_node = med_graph[node]['output']
-                    #print 'type:', type(out_node)
-                    for i in range(len(out_node)):
-                        if out_node[i] == med_node['name']:
-                            out_node.pop(i)
-                            out_node += output
-                            #out_node = out_node[1:i] + output + out_node[i+1:]
-                            #print 'type', type(out_node)
-                            break
-
-                #if node in med_graph.keys():
-                #    med_graph[node]['output'] = [i if i != med_node['name'] else output[0] for i in med_graph[node]['output'] ]
+                for out in med_graph.keys():
+                    if out == node:
+                        out_node = med_graph[out]['output']
+                        # print 'name: ', out
+                        # print 'input: ', med_graph[out]['input']
+                        # print 'output: ', out_node
+                        for i in range(0, len(out_node)):
+                            if out_node[i] == med_node['name']:
+                                out_node.pop(i)
+                                out_node += output
+                                # print 'name: ', out
+                                # print 'input: ', med_graph[out]['input']
+                                # print 'output: ', out_node
+                                break
             for node in output:
-                if node in med_graph.keys():
-                    in_node = med_graph[node]['input']
-                    for i in range(len(in_node)):
-                        if in_node[i] == med_node['name']:
-                            in_node.pop(i)
-                            in_node += input
-                            #in_node = in_node[1:i] + input + in_node[i + 1:]
-                            break
-                #if node in med_graph.keys():
-                #    med_graph[node]['input'] = [i if i != med_node['name'] else input[0] for i in med_graph[node]['input']]
+                for out in med_graph.keys():
+                    if out == node:
+                        in_node = med_graph[out]['input']
+                        # print 'name: ', out
+                        # print 'input: ', in_node
+                        # print 'output: ', med_graph[out]['output']
+                        for i in range(0, len(in_node)):
+                            if in_node[i] == med_node['name']:
+                                in_node.pop(i)
+                                in_node += input
+                                # print 'name: ', out
+                                # print 'input: ', in_nodels
+                                # print 'output: ', med_graph[out]['output']
             med_graph.pop(med_node['name'])
             #del med_graph[med_node]
         pass

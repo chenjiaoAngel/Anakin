@@ -349,10 +349,11 @@ class GraphProtoIO(object):
         ab_set = in_set - out_set
         ba_set = out_set - in_set
         print('in_set: ', in_set)
-        print('out_set: ', out_set)
-        print(ab_set)
         print('------')
-        print(ba_set)
+        print('out_set: ', out_set)
+        print('ab_set:', ab_set)
+        print('------')
+        print('ba_set:', ba_set)
         assert len(ab_set) == 0 and len(ba_set) == 0, 'in edge must equal with out edge'
 
     def __call__(self):

@@ -81,11 +81,10 @@ class MedTransAK:
         #print 'shape: ', med_attr['weights']['shape']
         if med_attr.get('trans') is not None:
             param.out_dim = med_attr['weights']['shape'][1]
-            print'trans out_dim', param.out_dim
+            # print'trans out_dim', param.out_dim
         else:
             param.out_dim = med_attr['weights']['shape'][0]
-            print'out_dim', param.out_dim
-
+            # print'out_dim', param.out_dim
 
 
     def Relu(self, med_attr, param):
@@ -156,8 +155,10 @@ class MedTransAK:
         med_attr = med_node['ak_attr']
         #print type_name
 
-       # print med_node['name'], med_node['type'], med_node['ak_type']
+        # print med_node['name'], med_node['type'], med_node['ak_type'], type_name
+        # print 'med_attr: ', med_attr
         func(med_attr, param)
+        # print 'func success'
         '''
         for name in med_attr:
             if name != 'weights' or name != 'bias':
@@ -165,10 +166,9 @@ class MedTransAK:
         '''
         param.feed_node_attr(ak_node)
         ak_op.set_name(med_node['ak_type'])
-        #print 'type: ', med_node['ak_type']
         ak_node.set_op(ak_op())
 
-        #print 'type', type(med_node['input'])
+        # print 'type', type(med_node['input'])
         #print 'type', type(med_node['output'])
         [ak_node.add_in(i) for i in med_node['input']]
         [ak_node.add_out(i) for i in med_node['output']]
