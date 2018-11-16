@@ -33,7 +33,6 @@ class ParseOnnxToMed:
         for node in ops:
             attr = {}
             takeit = True
-            op_cnt[node.op_type] += 1
 
             for a in node.attribute:
                 attr_cnt[a.name] += 1
@@ -59,9 +58,11 @@ class ParseOnnxToMed:
                 try:
                     #input_names = [i for i in node.input]
                     #output_names = [i for i in node.output]
-                    #if node.name == '':
-                       #node.name = node.output[0]
-                    node.name = str(node.op_type)+'_'+str(op_cnt[node.op_type])
+                    # if node.name == '':
+                    #    node.name = node.output[0]
+                    name = node.name #name + '_' +
+                    node.name = name + '_' + str(node.op_type)+'_'+str(op_cnt[node.op_type])
+                    op_cnt[node.op_type] += 1
                     #print node_name
                     #node_name = node.output[0];
                     anakin_nodes[node.name] = {'name': node.name, 'type': node.op_type, 'input': [str(i) for i in node.input],
@@ -235,13 +236,16 @@ class ParseOnnxToMed:
 
         all_search(nodes, {'Conv': parse_Conv,
                            'Gemm': parse_Gemm,
-                           'BatchNormalization':parse_BatchNorm})
+                           'BatchNormalization': parse_BatchNorm})
 
         all_search(nodes, {'Concat': parse_Concat})
 
-        all_search(nodes, {'Dropout': parse_Dropout,
+        all_search(nodes, {'Add': parse_Add,
+                           'Dropout': parse_Dropout,
                            'Relu': parse_Act,
-                           'MaxPool': parse_Pooling})
+                           'MaxPool': parse_Pooling,
+                           'GlobalAveragePool': parse_Pooling,
+                           'Reshape': parse_Reshape})
         #nodes = rm_weight_node(nodes, weights)
         #print 'anakin_node: ', nodes
         return nodes
@@ -250,9 +254,16 @@ class ParseOnnxToMed:
         onnx_model = onnx.load(self.model_path)
         onnx_graph = onnx_model.graph
         [nodes, weights, inputs, outputs, output_node, input_shape] = self._parse_onnx_node(onnx_graph, {})
-        # for node in nodes.values():
-        #     print(node['name'],node['input'],node['output'])
+        print 'onnx_node'
+        for node in nodes.values():
+            print(node['name'], node['input'], node['output'])
         # exit()
+        print '-------------------------------'
         med_graph = self._parse_onnx_graph(nodes, weights)
+        print 'weights or bias shape:'
+        for wei in weights:
+            wei_node = weights[wei]
+            print(wei, wei_node['shape'])
+        print '-------------------------------'
        # filter_graph={i:med_graph[i] for i in med_graph.keys() if med_graph[i]['ak_type'] is not None}
         return med_graph, output_node #filter_graph, outputs

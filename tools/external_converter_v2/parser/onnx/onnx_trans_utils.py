@@ -292,103 +292,112 @@ def parse_Concat(onnx_node, weights):
     else:
         ak_attr['axis'] = 0
 
+def parse_Reshape(onnx_node, weights):
+    onnx_node['visted'] = True
+    onnx_node['ak_type'] = 'Reshape'
+    shape_tensor = {}
+    shape_name = onnx_node['input'][1]
+    shape_node = weights[shape_name]
+    if weights.has_key(shape_name):
+        shape_node = weights[shape_name]
+    else:
+        print 'can not find weights', shape_name
+        return
+
+    ak_attr = onnx_node['ak_attr']
+    array = np.array(shape_node['shape'])
+    shape = []
+    for i in range(0, len(array)):
+        # a = array[i]
+        # if a == 0:
+        #     shape = [0, 0, 0, 0]
+        shape.append(array[i])
+    ak_attr['shape'] = shape_node['shape']
+
+    # print onnx_node['input']
+    onnx_node['input'].pop(1)
+    # print onnx_node['input']
+
+def parse_Add(onnx_node, weights):
+    onnx_node['visted'] = True
+    assert len(onnx_node['input']) == 2
+
+    ak_attr = onnx_node['ak_attr']
+    onnx_node['ak_type'] = 'Eltwise'
+    ak_attr['type'] = 'Add'
+
 def parse_Pooling(onnx_node, weights):
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Pooling'
-    if onnx_node['type'] == 'MaxPool':
-        ak_attr = onnx_node['ak_attr']
-        ak_attr['type'] = 'MAX'
+    ak_attr = onnx_node['ak_attr']
+    onnx_attr = onnx_node['onnx_attr']
 
-        onnx_attr = onnx_node['onnx_attr']
-        padding_val = []
-        if 'pads' in onnx_attr.keys():
-            padding_val = onnx_attr['pads']
-        else:
-            padding_val = [0, 0]
+    padding_val = []
+    if 'pads' in onnx_attr.keys():
+        padding_val = onnx_attr['pads']
+    else:
+        padding_val = [0, 0]
 
-        dilations = []
-        if 'dilations' in onnx_attr.keys():
-            dilations = onnx_attr['dilations']
-        else:
-            dilations = [1, 1]
+    dilations = []
+    if 'dilations' in onnx_attr.keys():
+        dilations = onnx_attr['dilations']
+    else:
+        dilations = [1, 1]
 
-        strides = []
-        if 'strides' in onnx_attr.keys():
-            strides = onnx_attr['strides']
-        else:
-            strides = [1, 1]
+    strides = []
+    if 'strides' in onnx_attr.keys():
+        strides = onnx_attr['strides']
+    else:
+        strides = [1, 1]
 
+    kernel_shape = []
+    if 'kernel_shape' in onnx_attr.keys():
         kernel_shape = onnx_attr['kernel_shape']
-        # padding deal
-        #if onnx_attr['auto_pad'] == 'SAME_LOWER' or onnx_attr['auto_pad'] == 'SAME_UPPER':
-        #    padding = [0, 0]
-        # padding = [1, 1, 1, 1] =[left, right, top, bottom]
-        #else:
-        padding = [padding_val[1], padding_val[0]]
+    else:
+        kernel_shape = [1, 1]
+    # padding deal
+    # if onnx_attr['auto_pad'] == 'SAME_LOWER' or onnx_attr['auto_pad'] == 'SAME_UPPER':
+    #    padding = [0, 0]
+    # padding = [1, 1, 1, 1] =[left, right, top, bottom]
+    # else:
+    padding = [padding_val[1], padding_val[0]]
 
-        ak_attr['window'] = kernel_shape
-        ak_attr['padding'] = padding
-        ak_attr['strides'] = strides
+    ak_attr['window'] = kernel_shape
+    ak_attr['padding'] = padding
+    ak_attr['strides'] = strides
+
+    if onnx_node['type'] == 'MaxPool':
+        ak_attr['type'] = 'MAX'
+        ak_attr['global_pooling'] = False
 
     if onnx_node['type'] == 'AveragePool':
-        ak_attr = onnx_node['ak_attr']
-        ak_attr['type'] = 'Average'
-
-        onnx_attr = onnx_node['onnx_attr']
-        padding_val = []
-        if 'pads' in onnx_attr.keys():
-            padding_val = onnx_attr['pads']
-        else:
-            padding_val = [0, 0]
-
-        dilations = []
-        if 'dilations' in onnx_attr.keys():
-            dilations = onnx_attr['dilations']
-        else:
-            dilations = [1, 1]
-
-        strides = []
-        if 'strides' in onnx_attr.keys():
-            strides = onnx_attr['strides']
-        else:
-            strides = [1, 1]
-
-        kernel_shape = onnx_attr['kernel_shape']
+        ak_attr['type'] = 'AVG'
+        ak_attr['global_pooling'] = False
         # padding deal
-        if onnx_attr['atuo_pad'] == 'SAME_LOWER' or onnx_attr['atuo_pad'] == 'SAME_UPPER':
-            padding = [0, 0]
-        else:
-            padding = [padding_val[1], padding_val[0]]
-
-        ak_attr['window'] = kernel_shape
-        ak_attr['padding'] = padding
-        ak_attr['strides'] = strides
+        # if onnx_attr['atuo_pad'] == 'SAME_LOWER' or onnx_attr['atuo_pad'] == 'SAME_UPPER':
+        #     padding = [0, 0]
+        # else:
+        #     padding = [padding_val[1], padding_val[0]]
 
     if onnx_node['type'] == 'GlobalMaxPool':
-        ak_attr = onnx_node['ak_attr']
         ak_attr['type'] = 'MAX'
         ak_attr['global_pooling'] = True
 
-        onnx_attr = onnx_node['onnx_attr']
         padding_val = [0, 0]
         strides = [0, 0]
         kernel_shape = [1, 1]
-        ak_attr['window'] = kernel_shape
-        ak_attr['padding'] = padding_val
-        ak_attr['strides'] = strides
 
     if onnx_node['type'] == 'GlobalAveragePool':
-        ak_attr = onnx_node['ak_attr']
-        ak_attr['type'] = 'Average'
+        ak_attr['type'] = 'AVG'
         ak_attr['global_pooling'] = True
 
-        onnx_attr = onnx_node['onnx_attr']
         padding_val = [0, 0]
         strides = [0, 0]
         kernel_shape = [1, 1]
-        ak_attr['window'] = kernel_shape
-        ak_attr['padding'] = padding_val
-        ak_attr['strides'] = strides
+
+    ak_attr['window'] = kernel_shape
+    ak_attr['padding'] = padding_val
+    ak_attr['strides'] = strides
 
 def parse_Dropout(onnx_node, weights):
     onnx_node['visted'] = True
@@ -463,11 +472,32 @@ def parse_BatchNorm(onnx_node, weights):
     momentum = onnx_attr['momentum']
     spatial = onnx_attr['spatial']
 
-    var = np.sqrt(var_node['data'].flatten() + eps)
-    np_scale = alpha_node['data'].flatten() / var
-    np_bias = beta_node['data'].flatten() - (alpha_node['data'].flatten() * mean_node['data'].flatten() / var)
+    # print 'type: ', type(var_node['data'])
+    var_data = np.array(var_node['data'])
+    alpha_data = np.array(alpha_node['data'])
+    beta_data = np.array(beta_node['data'])
+    mean_data = np.array(mean_node['data'])
+    var = np.sqrt(var_data.flatten() + eps)
+    np_scale = alpha_data.flatten() / var
+    np_bias = beta_data.flatten() - (alpha_data.flatten() * mean_data.flatten() / var)
 
-    ak_attr['scale_weights'] = np_scale.astype('float32')
-    ak_attr['bias_weights'] = np_bias.astype('float32')
+    # ak_attr['weights'] = np_scale.astype('float32')
+    # ak_attr['bias'] = np_bias.astype('float32')
+    scale_tensor = {}
+    bias_tensor = {}
+    scale_tensor['dtype'] = 'float32'
+    scale_tensor['data'] = np_scale
+    scale_tensor['shape'] = np_scale.shape
+
+    # print 'parse_BatchNorm scale: ', np_scale.shape
+
+    bias_tensor['dtype'] = 'float32'
+    bias_tensor['data'] = np_bias
+    bias_tensor['shape'] = np_bias.shape
+
+    # print 'parse_BatchNorm bias: ', np_bias.shape
+
+    ak_attr['weights'] = scale_tensor
+    ak_attr['bias'] = bias_tensor
 
     MedNodeUtil.retain_input(onnx_node, [onnx_node['input'][0]])

@@ -133,6 +133,14 @@ class MedTransAK:
     def Dropout(self, med_attr, param):
         param.ratio = med_attr['ratio']
 
+    def Split(self, med_attr, param):
+        param.split_num = med_attr['split_num']
+
+    def Eltwise(self, med_attr, param):
+        assert med_attr['type'] == 'Add'
+        param.type = med_attr['type']
+        param.coeff = [1.0, 1.0]
+
     def Scale(self, med_attr, param):
         param.weight_1 = np_2_ak_tensor(med_attr['weights'])
         if med_attr.get('bias') is not None:
@@ -144,8 +152,6 @@ class MedTransAK:
             param.bias_term = False
             param.axis = 0
             param.num_axes = 0
-
-
 
     def map_med_2_ak(self, ak_node, med_node):
         type_name = med_node['ak_type']
@@ -168,8 +174,9 @@ class MedTransAK:
         ak_op.set_name(med_node['ak_type'])
         ak_node.set_op(ak_op())
 
+        # print 'name', med_node['name']
         # print 'type', type(med_node['input'])
-        #print 'type', type(med_node['output'])
+        # print 'type', type(med_node['output'])
         [ak_node.add_in(i) for i in med_node['input']]
         [ak_node.add_out(i) for i in med_node['output']]
 

@@ -76,16 +76,20 @@ class MedGraphUtil:
         :param graph:
         :return:
         '''
+        print 'father_node', father_node['name'], father_node['input'], father_node['output']
         output = father_node['output']
         #son_shape = output[0]['shape']
-        son_node['input'] = [{'name': father_node['name']}]
+        son_node['input'] = [father_node['name']]
         son_node['output'] = output
-        father_node['output'] = [{'name': son_node['name']}]
+        father_node['output'] = [son_node['name']]
         for i in output:
             out_node = graph[i]
             out_node['input'] = MedNodeUtil.replace_name_with_list(out_node['input'], father_node['name'],
-                                                                   [{'name': son_node['name']}])
+                                                                   [son_node['name']])
+            print 'out_node: ', out_node['name'], out_node['input']
         graph[son_node['name']] = son_node
+        print 'father_node', father_node['name'], father_node['input'], father_node['output']
+        print 'son_node', son_node['name'], son_node['input'], son_node['output']
 
     @staticmethod
     def check_one_of_input_is_const(node, graph):
@@ -112,9 +116,11 @@ class MedGraphUtil:
         #print 'output!!:', output
         if len(output) > 1:
             split_node = MedNodeUtil.new_med_node()
-            split_node['name'] = med_node['name'] + '_split#'
+            split_node['name'] = med_node['name'] + '_split#' + str(len(output))
             split_node['ak_type'] = 'Split'
+            split_node['type'] = 'Split'
             split_node['ak_attr']['split_num'] = len(output)
+            print '-------------'
             print 'split', split_node['name']
             MedGraphUtil.append_node(med_node, split_node, graph=med_graph)
         pass
@@ -131,9 +137,9 @@ class MedGraphUtil:
         old_name = med_node['name']
         med_node['name'] = 'input_' + str(MedGraph_Input_Cnt)
         for i in med_node['output']:
-            out_node = med_graph[i['name']]
+            out_node = med_graph[i]
             out_node['input'] = MedNodeUtil.replace_name_with_list(out_node['input'], old_name,
-                                                                   [{'name': med_node['name'], 'shape': i['shape']}])
+                                                                   [[med_node['name']]])
 
     @staticmethod
     def _fusionScale(med_node, med_graph):
@@ -177,7 +183,8 @@ class MedGraphUtil:
         :param med_graph:
         :return:
         '''
-        if med_node['ak_attr']['drop'] == 0:
+        ak_attr = med_node['ak_attr']
+        if 'drop' in ak_attr.keys() and ak_attr['drop'] == 0:
             #not do scale, delete node
             input = med_node['input']
             output = med_node['output']
@@ -257,9 +264,11 @@ class MedGraphUtil:
         for node in med_graph.values():
             node['med_visted'] = False
         #MedGraphUtil._all_search_table(med_graph, {'Scale': MedGraphUtil._fusionScale})
+        print '********split***********'
         MedGraphUtil._all_search_fusion(med_graph, MedGraphUtil._auto_split)
-        MedGraphUtil._all_search_table(med_graph, {'Scale':MedGraphUtil._deleteScale})
-        #MedGraphUtil._all_search_table(med_graph, {'Input': MedGraphUtil._auto_input_name})
+        print '********scale***********'
+        MedGraphUtil._all_search_table(med_graph, {'Scale': MedGraphUtil._deleteScale})
+        # MedGraphUtil._all_search_table(med_graph, {'Input': MedGraphUtil._auto_input_name})
 
     @staticmethod
     def search_output_list(graph):

@@ -337,6 +337,7 @@ class GraphProtoIO(object):
     def format_edge_from_nodes(self):
         in_set = set()
         out_set = set()
+        print '-------graph------'
         for node in self.graph_proto.nodes:
             print(node.name, node.Op.name, node.ins, node.outs)
             name = node.name
@@ -348,11 +349,16 @@ class GraphProtoIO(object):
                 out_set.add((name, node_name))
         ab_set = in_set - out_set
         ba_set = out_set - in_set
-        print('in_set: ', in_set)
-        print('------')
-        print('out_set: ', out_set)
+        print 'in_set: '
+        print len(in_set)
+        print(in_set)
+        print 'out_set: '
+        print len(out_set)
+        print(out_set)
+        print len(ab_set)
         print('ab_set:', ab_set)
         print('------')
+        print len(ba_set)
         print('ba_set:', ba_set)
         assert len(ab_set) == 0 and len(ba_set) == 0, 'in edge must equal with out edge'
 
