@@ -1,12 +1,18 @@
 import numpy as np
-from ..graph_io import TensorProtoIO,OpsProtoIO
+from ..graph_io import TensorProtoIO, OpsProtoIO
 from ..operations import OpsParam
 
 def shape_2_ak_shape(shape):
+    '''
+    onnx shape convert to anakin shape
+    '''
     mini_shape = [i for i in shape if (i != None and i > 0)]
     return map(int, [1] * (4 - len(mini_shape)) + list(mini_shape))
 
 def np_2_ak_tensor(np_tensor):
+    '''
+    onnx data type convert to tensor dtype
+    '''
     data_type_map2 ={
         np.dtype('float32'): 'float',
         np.dtype('int32'): 'int',
@@ -52,6 +58,12 @@ class MedTransAK:
 
 
     def Convolution(self, med_attr, param):
+        '''
+        fill convlution param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         np_filters = med_attr['weights']
         param.weight_1 = np_2_ak_tensor(np_filters)
         param.filter_num = np_filters['shape'][0] #?
@@ -71,6 +83,12 @@ class MedTransAK:
 
 
     def Dense(self, med_attr, param):
+        '''
+        fill Dense param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         param.weight_1 = np_2_ak_tensor(med_attr['weights'])
         param.axis = 1
         if med_attr.get('bias') is not None:
@@ -88,30 +106,69 @@ class MedTransAK:
 
 
     def Relu(self, med_attr, param):
+        '''
+        fill Relu param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         if med_attr.get('alpha') is None:
             param.alpha = 0.0
         else:
             param.alpha = med_attr['type']
 
     def Concat(self, med_attr, param):
+        '''
+        fill Concat param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         if med_attr.get('axis') is None:
             param.alpha = 0.0
         else:
             param.alpha = med_attr['axis']
 
     def Activation(self, med_attr, param):
+        '''
+        fill Activation param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         param.type = med_attr['type']
 
 
     def Reshape(self, med_attr, param):
+        '''
+        fill Reshape param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         shape = med_attr['shape']
         if isinstance(shape, type(np.array([]))):
             shape = [int(i) for i in shape]
         param.dims = shape_2_ak_shape(shape)
         pass
 
+    def Flatten(self, med_attr, param):
+        '''
+        Flatten param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
+        param.start_axis = med_attr['start_axis']
+        param.end_axis = med_attr['end_axis']
 
     def Pooling(self, med_attr, param):
+        '''
+        fill Pooling param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         param.method = med_attr['type']
         param.pool_size = med_attr['window']
         param.strides = med_attr['strides']
@@ -126,22 +183,52 @@ class MedTransAK:
 
 
     def Input(self, med_attr, param):
+        '''
+        fill Input param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         param.input_shape = shape_2_ak_shape(med_attr['shape'])
         param.alias = 'input_' + str(self.input_count)
         self.input_count += 1
 
     def Dropout(self, med_attr, param):
+        '''
+        fill dropout param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         param.ratio = med_attr['ratio']
 
     def Split(self, med_attr, param):
+        '''
+        fill split param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         param.split_num = med_attr['split_num']
 
     def Eltwise(self, med_attr, param):
+        '''
+        fill Eltwise param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         assert med_attr['type'] == 'Add'
         param.type = med_attr['type']
         param.coeff = [1.0, 1.0]
 
     def Scale(self, med_attr, param):
+        '''
+        fill scale param in ak graph
+        :param med_attr:
+        :param param:
+        :return:
+        '''
         param.weight_1 = np_2_ak_tensor(med_attr['weights'])
         if med_attr.get('bias') is not None:
             param.weight_2 = np_2_ak_tensor(med_attr['bias'])
@@ -154,6 +241,12 @@ class MedTransAK:
             param.num_axes = 0
 
     def map_med_2_ak(self, ak_node, med_node):
+        '''
+        entrance for trans med graph 2 ak graph
+        :param ak_node:
+        :param med_node:
+        :return:
+        '''
         type_name = med_node['ak_type']
         func = getattr(self, type_name, None)
         param = OpsParam()

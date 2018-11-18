@@ -30,15 +30,16 @@ ONNX_TO_ANAKIN_DTYPE1 = {
 }
 
 ANAKIN_VALID_ATTRIBUTES = {
-    'p', 'bias', 'axes', 'pads', 'mean', 'activation_beta', 'spatial_scale', 'broadcast', 'pooled_shape', 'high',
-    'activation_alpha', 'is_test', 'hidden_size', 'activations', 'beta', 'input_as_shape', 'drop_states', 'alpha',
-    'momentum', 'scale', 'axis', 'dilations', 'transB', 'axis_w', 'blocksize', 'output_sequence', 'mode', 'perm',
-    'min', 'seed', 'ends', 'paddings', 'to', 'gamma', 'width_scale', 'normalize_variance', 'group', 'ratio',
-'values',
-    'dtype', 'output_shape', 'spatial', 'split', 'input_forget', 'keepdims', 'transA', 'auto_pad', 'border', 'low',
-    'linear_before_reset', 'height_scale', 'output_padding', 'shape', 'kernel_shape', 'epsilon', 'size', 'starts',
-    'direction', 'max', 'clip', 'across_channels', 'value', 'strides', 'extra_shape', 'scales', 'k', 'sample_size',
-    'blocksize', 'epsilon', 'momentum'
+    'p', 'bias', 'axes', 'pads', 'mean', 'activation_beta', 'spatial_scale', 'broadcast',
+    'pooled_shape', 'high', 'activation_alpha', 'is_test', 'hidden_size', 'activations',
+    'beta', 'input_as_shape', 'drop_states', 'alpha', 'momentum', 'scale', 'axis',
+    'dilations', 'transB', 'axis_w', 'blocksize', 'output_sequence', 'mode', 'perm',
+    'min', 'seed', 'ends', 'paddings', 'to', 'gamma', 'width_scale', 'normalize_variance',
+    'group', 'ratio', 'values', 'dtype', 'output_shape', 'spatial', 'split', 'input_forget',
+    'keepdims', 'transA', 'auto_pad', 'border', 'low', 'linear_before_reset', 'height_scale',
+    'output_padding', 'shape', 'kernel_shape', 'epsilon', 'size', 'starts', 'direction',
+    'max', 'clip', 'across_channels', 'value', 'strides', 'extra_shape', 'scales',
+    'k', 'sample_size', 'blocksize', 'epsilon', 'momentum'
 }
 
 def get_onnx_tensor_data(tensor):
@@ -83,6 +84,9 @@ def get_onnx_tensor_data(tensor):
 
 
 def map_onnx_dtype(dtype):
+    '''
+    get onnx dtype
+    '''
     return ONNX_TO_ANAKIN_DTYPE.get(dtype)
 
 def onnx_to_anakin_tensor(tensor):
@@ -112,6 +116,9 @@ def onnx_to_anakin_tensor(tensor):
         return data, shape, dtype
 
 def has_key(attr, key_name):
+    '''
+    whether the key is in dict
+    '''
     for it in attr.keys():
         if it == key_name:
             return True
@@ -119,6 +126,9 @@ def has_key(attr, key_name):
     return False
 
 def rm_weight_node(onnx_node, weights):
+    '''
+    remove key form weights
+    '''
     for node in onnx_node.keys():
         in_node = onnx_node[node]['input']
         for name in in_node:
@@ -126,6 +136,12 @@ def rm_weight_node(onnx_node, weights):
                 in_node.remove(name)
 
 def parse_Conv(onnx_node, weights):
+    '''
+    convert conv2D to convolution
+    :param onnx_node:
+    :param graph:
+    :return:
+    '''
    #print 'parse_Conv2D'
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Convolution'
@@ -211,6 +227,12 @@ def parse_Conv(onnx_node, weights):
     #exit()
 
 def parse_Gemm(onnx_node, weights):
+    '''
+    convert Gemm to dense
+    :param onnx_node:
+    :param graph:
+    :return:
+    '''
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Dense'
 
@@ -274,15 +296,27 @@ def parse_Gemm(onnx_node, weights):
     onnx_node['input'].remove(wei_name)
 
 def parse_Act(onnx_node, weights):
+    '''
+    convert Act
+    :param onnx_node:
+    :param graph:
+    :return:
+    '''
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Activation'
     if onnx_node['type'] == 'Relu':
         onnx_node['ak_type'] = 'Relu'
         onnx_node['ak_attr']['type'] = 'Relu'
     else:
-        raise Exception('un handel activation '+str(onnx_node.op_type))
+        raise Exception('un handel activation ' + str(onnx_node.op_type))
 
 def parse_Concat(onnx_node, weights):
+    '''
+    convert Concat
+    :param onnx_node:
+    :param graph:
+    :return:
+    '''
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Concat'
     onnx_attr = onnx_node['onnx_attr']
@@ -293,6 +327,12 @@ def parse_Concat(onnx_node, weights):
         ak_attr['axis'] = 0
 
 def parse_Reshape(onnx_node, weights):
+    '''
+    convert Reshape
+    :param onnx_node:
+    :param graph:
+    :return:
+    '''
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Reshape'
     shape_tensor = {}
@@ -306,19 +346,33 @@ def parse_Reshape(onnx_node, weights):
 
     ak_attr = onnx_node['ak_attr']
     array = np.array(shape_node['shape'])
+    onnx_node['ak_type'] = 'Flatten'
+    ak_attr['start_axis'] = 1
+    ak_attr['end_axis'] = -1
+    ak_attr['type'] = 'Flatten'
     shape = []
-    for i in range(0, len(array)):
-        # a = array[i]
-        # if a == 0:
-        #     shape = [0, 0, 0, 0]
-        shape.append(array[i])
-    ak_attr['shape'] = shape_node['shape']
+    # for i in range(0, len(array)):
+    #     a = array[i]
+    #     if a == 0:
+    #         onnx_node['ak_type'] = 'Flatten'
+    #         onnx_node['start_axis'] = 1
+    #         onnx_node['end_axis'] = -1
+    #     else:
+    #         shape.append(array[i])
+    #     # shape.append(array[i])
+    ak_attr['shape'] = shape
 
     # print onnx_node['input']
     onnx_node['input'].pop(1)
     # print onnx_node['input']
 
 def parse_Add(onnx_node, weights):
+    '''
+    convert Add to Eltwise
+    :param onnx_node:
+    :param graph:
+    :return:
+    '''
     onnx_node['visted'] = True
     assert len(onnx_node['input']) == 2
 
@@ -327,6 +381,12 @@ def parse_Add(onnx_node, weights):
     ak_attr['type'] = 'Add'
 
 def parse_Pooling(onnx_node, weights):
+    '''
+    convert Pooling
+    :param onnx_node:
+    :param graph:
+    :return:
+    '''
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Pooling'
     ak_attr = onnx_node['ak_attr']
@@ -400,9 +460,15 @@ def parse_Pooling(onnx_node, weights):
     ak_attr['strides'] = strides
 
 def parse_Dropout(onnx_node, weights):
+    '''
+    convert dropout
+    :param onnx_node:
+    :param graph:
+    :return:
+    '''
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Scale'
-    ak_attr = onnx_node['ak_attr'];
+    ak_attr = onnx_node['ak_attr']
     '''
     ratio	(float, default 0.5) the ratio of random dropout
     is_test	(int) if nonzero, run dropout in test mode where the output is simply Y = X.
@@ -419,7 +485,7 @@ def parse_Dropout(onnx_node, weights):
         ak_attr['drop'] = 0
     scale_val = onnx_node['onnx_attr']['ratio']
     shape = [1, 1, 1, 1]
-    scale_np = np.full(shape, scale_val); #np.arange([scale_val])
+    scale_np = np.full(shape, scale_val) #np.arange([scale_val])
     weight_tensor = {}
     weight_tensor['shape'] = shape
     weight_tensor['data'] = scale_np
@@ -429,6 +495,12 @@ def parse_Dropout(onnx_node, weights):
     ak_attr['num_axes'] = 0
 
 def parse_BatchNorm(onnx_node, weights):
+    '''
+    convert BatchNorm
+    :param onnx_node:
+    :param graph:
+    :return:
+    '''
     onnx_node['visted'] = True
     onnx_node['ak_type'] = 'Scale'
     ak_attr = onnx_node['ak_attr']

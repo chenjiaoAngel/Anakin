@@ -8,7 +8,8 @@ class MedNodeUtil:
         return instance of empty standard med graph node
         :return:
         '''
-        return {'name': None, 'ak_type': None, 'input': [], 'output': [], 'ak_attr': {}, 'type': None,
+        return {'name': None, 'ak_type': None, 'input': [], 'output': [],
+                'ak_attr': {}, 'type': None,
                 'med_visted': False}
 
     @staticmethod
@@ -59,8 +60,9 @@ class MedNodeUtil:
         '''
         for i in node['output']:
             tar_node = graph[i['name']]
-            tar_node['input'] = MedNodeUtil.replace_name_with_list(tar_node['input'], node['name'],
-                                                                   [{'name': this_name, 'shape': this_shape}])
+            tar_node['input'] = MedNodeUtil.replace_name_with_list(tar_node['input'],
+                                                                   node['name'],
+                                                                   [this_name])
 
 
 MedGraph_Input_Cnt = 0
@@ -76,7 +78,7 @@ class MedGraphUtil:
         :param graph:
         :return:
         '''
-        print 'father_node', father_node['name'], father_node['input'], father_node['output']
+        # print 'father_node', father_node['name'], father_node['input'], father_node['output']
         output = father_node['output']
         #son_shape = output[0]['shape']
         son_node['input'] = [father_node['name']]
@@ -84,12 +86,13 @@ class MedGraphUtil:
         father_node['output'] = [son_node['name']]
         for i in output:
             out_node = graph[i]
-            out_node['input'] = MedNodeUtil.replace_name_with_list(out_node['input'], father_node['name'],
+            out_node['input'] = MedNodeUtil.replace_name_with_list(out_node['input'],
+                                                                   father_node['name'],
                                                                    [son_node['name']])
-            print 'out_node: ', out_node['name'], out_node['input']
+            # print 'out_node: ', out_node['name'], out_node['input']
         graph[son_node['name']] = son_node
-        print 'father_node', father_node['name'], father_node['input'], father_node['output']
-        print 'son_node', son_node['name'], son_node['input'], son_node['output']
+        # print 'father_node', father_node['name'], father_node['input'], father_node['output']
+        # print 'son_node', son_node['name'], son_node['input'], son_node['output']
 
     @staticmethod
     def check_one_of_input_is_const(node, graph):
@@ -167,7 +170,8 @@ class MedGraphUtil:
                 else:
                     input_attr['bias_weights'] = med_ak_attr['bias_weights']
                 med_node['ak_type'] = None
-                input_node['output'] = MedNodeUtil.replace_name_with_list(input_node['output'], med_node['name'],
+                input_node['output'] = MedNodeUtil.replace_name_with_list(input_node['output'],
+                                                                          med_node['name'],
                                                                           med_node['output'])
                 MedNodeUtil.redirecto_outputs_input_to_this(med_node, med_graph, input_node['name'],
                                                             med_node['input'][0]['shape'])

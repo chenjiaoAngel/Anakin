@@ -1,4 +1,4 @@
-import onnx 
+import onnx
 import numpy as np
 #from tensorflow.core.framework import types_pb2, tensor_pb2
 import logging as log
@@ -9,7 +9,8 @@ class ParseOnnxToMed:
     def __init__(self, onnx_model_path):
         self.model_path = onnx_model_path
 
-    def _parse_onnx_node(self, onnx_graph, shape_override):
+    def _parse_onnx_node(self, onnx_graph,
+        shape_override):
 
         """
         Load onnx graph and parse node
@@ -17,9 +18,9 @@ class ParseOnnxToMed:
 
         # ignore the following attributes
         ignored_attr = ["unknown_rank", "_class", "Tidx", "Tshape", "use_cudnn_on_gpu", "Index",
-                        "Tpaddings", "TI", "Tparams", "Tindices", "Tlen", "Tdim", "dynamic_size", "element_shape",
-                        "Tmultiples", "output_dtype", "Tblock_shape", "Tcrops", "index_type", "Taxis", "U",
-                        "maxval", "Tout"]
+                        "Tpaddings", "TI", "Tparams", "Tindices", "Tlen", "Tdim", "dynamic_size",
+                        "element_shape", "Tmultiples", "output_dtype", "Tblock_shape", "Tcrops",
+                        "index_type", "Taxis", "U", "maxval", "Tout"]
         # some stats
         op_cnt = collections.Counter()
         attr_cnt = collections.Counter()
@@ -41,15 +42,15 @@ class ParseOnnxToMed:
                 elif a.type == 2: #INT
                     attr[a.name] = int(a.i)
                 elif a.type == 6: #FLOATS
-                    val_list = [];
+                    val_list = []
                     for val in a.floats:
-                        val_list.append(val);
+                        val_list.append(val)
                     attr[a.name] = val_list
                 elif a.type == 7: #INTS
-                    val_list = [];
+                    val_list = []
                     #print 'type: ', a.name, type(a.ints[0])
                     for val in a.ints:
-                        val_list.append(int(val));
+                        val_list.append(int(val))
                     attr[a.name] = val_list
                 else:
                     attr[a.name] = a.auto_pad
@@ -61,12 +62,15 @@ class ParseOnnxToMed:
                     # if node.name == '':
                     #    node.name = node.output[0]
                     name = node.name #name + '_' +
-                    node.name = name + '_' + str(node.op_type)+'_'+str(op_cnt[node.op_type])
+                    node.name = name + '_' + str(node.op_type) + '_' + str(op_cnt[node.op_type])
                     op_cnt[node.op_type] += 1
                     #print node_name
                     #node_name = node.output[0];
-                    anakin_nodes[node.name] = {'name': node.name, 'type': node.op_type, 'input': [str(i) for i in node.input],
-                                               'output': [str(i) for i in node.output], 'onnx_attr': attr, 'visted': False, 'name:': False,
+                    anakin_nodes[node.name] = {'name': node.name, 'type': node.op_type,
+                                               'input': [str(i) for i in node.input],
+                                               'output': [str(i) for i in node.output],
+                                               'onnx_attr': attr,
+                                               'visted': False, 'name:': False,
                                                'shape': None, 'ak_type': None, 'ak_attr': {}}
                 except Exception as ex:
                     log.error("pass1 convert failed for %s, ex=%s", node, ex)
@@ -121,8 +125,9 @@ class ParseOnnxToMed:
                 '''
 
                 anakin_nodes[node_name] = {'name': node_name, 'type': 'Input', 'input': [],
-                                               'output': output_node, 'onnx_attr': {}, 'visted': True,
-                                               'shape': shape, 'ak_type': 'Input', 'ak_attr': {'shape': shape}}
+                                            'output': output_node, 'onnx_attr': {},
+                                            'visted': True, 'shape': shape, 'ak_type': 'Input',
+                                            'ak_attr': {'shape': shape}}
 
                 in_cnt += 1
             else:
@@ -142,7 +147,8 @@ class ParseOnnxToMed:
                     if name == output_a.name:
                         input_node.append(name)
 
-            anakin_nodes[output_a.name] = {'name': output_a.name, 'type': 'Output', 'input': input_node,
+            anakin_nodes[output_a.name] = {'name': output_a.name, 'type': 'Output',
+                                          'input': input_node,
                                           'output': [], 'onnx_attr': {}, 'visted': True,
                                           'shape': shape, 'ak_type': None, 'ak_attr': {}}
         #print 'weights', len(weights)
@@ -172,7 +178,7 @@ class ParseOnnxToMed:
 
         #print 'inputs', inputs
         #print 'outputs', outputs
-        return anakin_nodes, weights, inputs, outputs, output_node, input_shape
+        return anakin_nodes, weights, output_node
 
     def _change_inout_nodename(self, nodes, weights):
         '''
@@ -223,6 +229,11 @@ class ParseOnnxToMed:
             # print 'out:', node['output']
 
     def _parse_onnx_graph(self, nodes, weights):
+        '''
+        parse onnx graph
+        :param nodes:
+        :return:
+        '''
         # out2nodename = {i['name']:[] for i in nodes}
         #self._fix_self_output(nodes)
 
@@ -251,9 +262,14 @@ class ParseOnnxToMed:
         return nodes
 
     def parse(self):
+        '''
+        parse onnx model
+        :param:
+        :return:
+        '''
         onnx_model = onnx.load(self.model_path)
         onnx_graph = onnx_model.graph
-        [nodes, weights, inputs, outputs, output_node, input_shape] = self._parse_onnx_node(onnx_graph, {})
+        [nodes, weights, output_node] = self._parse_onnx_node(onnx_graph, {})
         print 'onnx_node'
         for node in nodes.values():
             print(node['name'], node['input'], node['output'])
